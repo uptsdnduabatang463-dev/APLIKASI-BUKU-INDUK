@@ -2148,8 +2148,60 @@ function PageData({
       for (const fk of FILE_FIELDS) {
         const f = editFiles[fk.key];
         if (f) {
-          const base64 = await fileToBase64(f);
-          fileData[fk.key] = { base64, mimeType: f.type, fileName: f.name };
+          const compressedBase64 = await new Promise<string>(
+            (resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = reader.result as string;
+                if (f.size <= 100 * 1024) {
+                  resolve(result.split(",")[1]);
+                  return;
+                }
+                const img = new Image();
+                img.onload = () => {
+                  const canvas = document.createElement("canvas");
+                  let { width, height } = img;
+                  const MAX_DIM = 1200;
+                  if (width > MAX_DIM || height > MAX_DIM) {
+                    if (width > height) {
+                      height = Math.round((height * MAX_DIM) / width);
+                      width = MAX_DIM;
+                    } else {
+                      width = Math.round((width * MAX_DIM) / height);
+                      height = MAX_DIM;
+                    }
+                  }
+                  canvas.width = width;
+                  canvas.height = height;
+                  const ctx = canvas.getContext("2d")!;
+                  ctx.drawImage(img, 0, 0, width, height);
+                  const TARGET = 100 * 1024;
+                  let quality = 0.9;
+                  const compress = () => {
+                    const base64 = canvas.toDataURL("image/jpeg", quality);
+                    const estimatedSize =
+                      (base64.length - "data:image/jpeg;base64,".length) * 0.75;
+                    if (estimatedSize <= TARGET || quality <= 0.05) {
+                      resolve(base64.split(",")[1]);
+                    } else {
+                      quality = Math.max(quality - 0.08, 0.05);
+                      compress();
+                    }
+                  };
+                  compress();
+                };
+                img.onerror = reject;
+                img.src = result;
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(f);
+            }
+          );
+          fileData[fk.key] = {
+            base64: compressedBase64,
+            mimeType: "image/jpeg",
+            fileName: f.name.replace(/\.(png|jpg|jpeg)$/i, ".jpg"),
+          };
         } else {
           fileData[fk.key] = null;
         }
@@ -2174,8 +2226,20 @@ function PageData({
 
       if (response.ok || response.type === "opaque") {
         setEditStatus("success");
+        // Gabungkan: data form + URL file lama (dari editing.data) + file baru (placeholder agar terhitung)
+        const fileUpdates: Record<string, string> = {};
+        for (const fk of FILE_FIELDS) {
+          if (editFiles[fk.key]) {
+            // File baru diupload → tandai dengan placeholder agar docsCount terhitung
+            fileUpdates[fk.key] = "uploaded";
+          } else if (editing.data[fk.key]) {
+            // Tidak ada file baru → pakai URL lama
+            fileUpdates[fk.key] = editing.data[fk.key];
+          }
+        }
         const saved = {
           ...editForm,
+          ...fileUpdates,
           tanggalLahir: editForm.tanggalLahir
             ? editForm.tanggalLahir.split("-").reverse().join("/")
             : "",
