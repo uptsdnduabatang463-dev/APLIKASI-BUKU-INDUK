@@ -2296,7 +2296,6 @@ function PageData({
   };
 
   const handleDownloadExcel = () => {
-    // Load SheetJS jika belum ada
     const doExport = () => {
       const XLSX = (window as any).XLSX;
       if (!XLSX) {
@@ -2306,7 +2305,6 @@ function PageData({
         return;
       }
 
-      // Bangun array data: header + rows
       const headers = COLUMNS.map((c) => c.label);
       const rows = filtered.map((s) =>
         COLUMNS.map((c) => {
@@ -2316,8 +2314,6 @@ function PageData({
       );
 
       const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-
-      // Auto lebar kolom
       ws["!cols"] = headers.map((_, i) => {
         const maxLen = Math.max(
           headers[i].length,
@@ -2332,7 +2328,22 @@ function PageData({
       const fileName = `DataPesertaDidik${
         filterKelas ? "_Kelas" + filterKelas : ""
       }${filterRombel ? "_Rombel" + filterRombel : ""}.xlsx`;
-      XLSX.writeFile(wb, fileName);
+
+      // ── Gunakan Blob + anchor agar mobile langsung download tanpa perlu app Excel ──
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([wbout], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 200);
     };
 
     if (!(window as any).XLSX) {
