@@ -918,8 +918,10 @@ function PageForm() {
           required
           inputMode="numeric"
           pattern="[0-9]*"
-          onInput={(e) => {
-            e.target.value = e.target.value.replace(/[^0-9]/g, "");
+          onInput={(e: React.FormEvent<HTMLInputElement>) => {
+            (e.target as HTMLInputElement).value = (
+              e.target as HTMLInputElement
+            ).value.replace(/[^0-9]/g, "");
           }}
           value={formData.nomorKK}
           onChange={handleChange}
@@ -929,8 +931,10 @@ function PageForm() {
           label="NIK (Nomor Induk Kependudukan)"
           inputMode="numeric"
           pattern="[0-9]*"
-          onInput={(e) => {
-            e.target.value = e.target.value.replace(/[^0-9]/g, "");
+          onInput={(e: React.FormEvent<HTMLInputElement>) => {
+            (e.target as HTMLInputElement).value = (
+              e.target as HTMLInputElement
+            ).value.replace(/[^0-9]/g, "");
           }}
           value={formData.nik}
           onChange={handleChange}
