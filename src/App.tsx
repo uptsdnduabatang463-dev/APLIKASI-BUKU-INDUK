@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 
 // ─── KONSTANTA ───────────────────────────────────────────────────────────────
 const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycby1j4l0PPY-IaEsF6UJ--rs8Bl2L3aTtxwA_sr-g2V5X9fAHB8l13ehcytjcf3Om3Js/exec";
+  "https://script.google.com/macros/s/AKfycbwrWuGePEVh3h3Kj0IprB-t8PkJ5xd4s29riaoPxZSw_ukrjF0ymZgUVDWLO7jXObj0/exec";
 
 // ─── TIPE USER ────────────────────────────────────────────────────────────────
 type UserRole = "OPERATOR" | "GURU";
