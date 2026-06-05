@@ -2008,7 +2008,13 @@ function PageData({
   initKelas = "",
   initRombel = "",
   lockedFilter = false,
-}: { initKelas?: string; initRombel?: string; lockedFilter?: boolean } = {}) {
+  isOperator = false,
+}: {
+  initKelas?: string;
+  initRombel?: string;
+  lockedFilter?: boolean;
+  isOperator?: boolean;
+} = {}) {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -3054,16 +3060,70 @@ function PageData({
                           <div key={k}>
                             <label className="block text-xs text-gray-500 mb-1">
                               Kelas
-                              <span className="ml-1 text-orange-400 font-normal">
-                                (otomatis — tidak dapat diubah)
-                              </span>
+                              {!isOperator && (
+                                <span className="ml-1 text-orange-400 font-normal">
+                                  (tidak dapat diubah)
+                                </span>
+                              )}
                             </label>
-                            <input
-                              type="text"
-                              value={editForm.kelas || ""}
-                              disabled
-                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-100 text-gray-400 cursor-not-allowed"
-                            />
+                            {isOperator ? (
+                              <select
+                                name="kelas"
+                                value={editForm.kelas || ""}
+                                onChange={handleEditChange}
+                                className={INPUT_EDIT_CLASS}
+                              >
+                                <option value="">-- Pilih --</option>
+                                {["1", "2", "3", "4", "5", "6", "lulus"].map(
+                                  (opt) => (
+                                    <option key={opt} value={opt}>
+                                      {opt === "lulus"
+                                        ? "Lulus"
+                                        : "Kelas " + opt}
+                                    </option>
+                                  )
+                                )}
+                              </select>
+                            ) : (
+                              <input
+                                type="text"
+                                value={editForm.kelas || ""}
+                                disabled
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-100 text-gray-400 cursor-not-allowed"
+                              />
+                            )}
+                          </div>
+                        );
+                      if (k === "rombel")
+                        return (
+                          <div key={k}>
+                            <label className="block text-xs text-gray-500 mb-1">
+                              Rombel
+                              {!isOperator && (
+                                <span className="ml-1 text-orange-400 font-normal">
+                                  (tidak dapat diubah)
+                                </span>
+                              )}
+                            </label>
+                            {isOperator ? (
+                              <select
+                                name="rombel"
+                                value={editForm.rombel || ""}
+                                onChange={handleEditChange}
+                                className={INPUT_EDIT_CLASS}
+                              >
+                                <option value="">-- Pilih --</option>
+                                <option value="A">Rombel A</option>
+                                <option value="B">Rombel B</option>
+                              </select>
+                            ) : (
+                              <input
+                                type="text"
+                                value={editForm.rombel || ""}
+                                disabled
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-100 text-gray-400 cursor-not-allowed"
+                              />
+                            )}
                           </div>
                         );
                       if (k === "jenisKelamin")
@@ -7139,10 +7199,12 @@ function PagePegawai({
   readOnly = false,
   guruKelas = "",
   guruRombel = "",
+  loginJabatan = "",
 }: {
   readOnly?: boolean;
   guruKelas?: string;
   guruRombel?: string;
+  loginJabatan?: string;
 } = {}) {
   const [pegawai, setPegawai] = useState<Pegawai[]>([]);
   const [loading, setLoading] = useState(false);
@@ -7186,6 +7248,8 @@ function PagePegawai({
 
   // Modal detail
   const [selected, setSelected] = useState<Pegawai | null>(null);
+
+  const isLoginAsGuru = readOnly && loginJabatan.toUpperCase() === "GURU";
 
   const fetchData = async () => {
     setLoading(true);
@@ -7576,29 +7640,36 @@ function PagePegawai({
                         >
                           Detail
                         </button>
+                        {(!readOnly ||
+                          (isLoginAsGuru &&
+                            p.jabatan.toUpperCase() === "GURU" &&
+                            String(p.kelas).trim() ===
+                              String(guruKelas).trim() &&
+                            p.rombel.toUpperCase() ===
+                              guruRombel.toUpperCase())) && (
+                          <button
+                            onClick={() => openEdit(p, realIndex)}
+                            style={{ background: "#f59e0b" }}
+                            className="px-2.5 py-1.5 text-white text-xs font-semibold rounded-lg shadow-sm"
+                          >
+                            Edit
+                          </button>
+                        )}
+
                         {!readOnly && (
-                          <>
-                            <button
-                              onClick={() => openEdit(p, realIndex)}
-                              style={{ background: "#f59e0b" }}
-                              className="px-2.5 py-1.5 text-white text-xs font-semibold rounded-lg shadow-sm"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => {
-                                setDeleteTarget({
-                                  data: p,
-                                  rowIndex: realIndex,
-                                });
-                                setDeleteStatus("idle");
-                              }}
-                              style={{ background: "#ef4444" }}
-                              className="px-2.5 py-1.5 text-white text-xs font-semibold rounded-lg shadow-sm"
-                            >
-                              Hapus
-                            </button>
-                          </>
+                          <button
+                            onClick={() => {
+                              setDeleteTarget({
+                                data: p,
+                                rowIndex: realIndex,
+                              });
+                              setDeleteStatus("idle");
+                            }}
+                            style={{ background: "#ef4444" }}
+                            className="px-2.5 py-1.5 text-white text-xs font-semibold rounded-lg shadow-sm"
+                          >
+                            Hapus
+                          </button>
                         )}
                       </div>
                     </td>
@@ -7932,12 +8003,18 @@ function PagePegawai({
                   <select
                     value={editForm.jabatan}
                     onChange={(e) =>
+                      !isLoginAsGuru &&
                       setEditForm((prev) => ({
                         ...prev,
                         jabatan: e.target.value,
                       }))
                     }
-                    className={INPUT_EDIT_CLASS}
+                    disabled={isLoginAsGuru}
+                    className={`${INPUT_EDIT_CLASS} ${
+                      isLoginAsGuru
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : ""
+                    }`}
                   >
                     <option value="">-- Pilih --</option>
                     <option value="OPERATOR">Operator</option>
@@ -7951,12 +8028,18 @@ function PagePegawai({
                   <select
                     value={editForm.kelas}
                     onChange={(e) =>
+                      !isLoginAsGuru &&
                       setEditForm((prev) => ({
                         ...prev,
                         kelas: e.target.value,
                       }))
                     }
-                    className={INPUT_EDIT_CLASS}
+                    disabled={isLoginAsGuru}
+                    className={`${INPUT_EDIT_CLASS} ${
+                      isLoginAsGuru
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : ""
+                    }`}
                   >
                     <option value="">-- Pilih --</option>
                     {[1, 2, 3, 4, 5, 6].map((k) => (
@@ -7973,12 +8056,18 @@ function PagePegawai({
                   <select
                     value={editForm.rombel}
                     onChange={(e) =>
+                      !isLoginAsGuru &&
                       setEditForm((prev) => ({
                         ...prev,
                         rombel: e.target.value,
                       }))
                     }
-                    className={INPUT_EDIT_CLASS}
+                    disabled={isLoginAsGuru}
+                    className={`${INPUT_EDIT_CLASS} ${
+                      isLoginAsGuru
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : ""
+                    }`}
                   >
                     <option value="">-- Pilih --</option>
                     <option value="A">Rombel A</option>
@@ -7992,6 +8081,24 @@ function PagePegawai({
                       (gambar ulang untuk mengganti yang lama)
                     </span>
                   </label>
+
+                  {/* Preview tanda tangan lama jika belum digambar ulang */}
+                  {!editBase64 && editing.data.tandaTangan && (
+                    <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <p className="text-xs text-gray-400 mb-2 font-medium uppercase tracking-wide">
+                        Tanda Tangan Tersimpan
+                      </p>
+                      <img
+                        src={convertDriveUrl(editing.data.tandaTangan)}
+                        alt="Tanda Tangan Lama"
+                        className="max-h-20 border border-gray-200 rounded bg-white p-1"
+                      />
+                      <p className="text-xs text-gray-400 mt-1.5">
+                        Gambar di area bawah untuk mengganti
+                      </p>
+                    </div>
+                  )}
+
                   <SignaturePad
                     canvasRef={editCanvasRef}
                     onBase64Change={setEditBase64}
@@ -8273,6 +8380,7 @@ export default function App() {
                 readOnly={true}
                 guruKelas={user.kelas}
                 guruRombel={user.rombel}
+                loginJabatan="GURU"
               />
             ) : (
               <PageBukuInduk
@@ -8286,7 +8394,7 @@ export default function App() {
           ) : page === "form" ? (
             <PageForm />
           ) : page === "data" ? (
-            <PageData />
+            <PageData isOperator={true} />
           ) : page === "nilai" ? (
             <PageNilai />
           ) : page === "pegawai" ? (
