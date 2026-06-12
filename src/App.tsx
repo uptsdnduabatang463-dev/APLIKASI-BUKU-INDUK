@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 
 // ─── KONSTANTA ───────────────────────────────────────────────────────────────
 const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbwrWuGePEVh3h3Kj0IprB-t8PkJ5xd4s29riaoPxZSw_ukrjF0ymZgUVDWLO7jXObj0/exec";
+  "https://script.google.com/macros/s/AKfycbwB7a-pfJzIPBzfc7zH3kQi5IvPG9guEJBBlH2c-t7N66EDbpkWtJOWPQNGf2IMVCoI/exec";
 
 // ─── TIPE USER ────────────────────────────────────────────────────────────────
 type UserRole = "OPERATOR" | "GURU";
@@ -751,16 +751,41 @@ function PageForm() {
     setFiles((prev) => ({ ...prev, [key]: file }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("loading");
-    setUploadProgress("Menyiapkan data...");
+    setUploadProgress("Memeriksa data duplikat...");
 
     try {
-      const fileData: Record<
-        string,
-        { base64: string; mimeType: string; fileName: string } | null
-      > = {};
+      // ── CEK DUPLIKAT ──
+      const checkUrl = new URL(SCRIPT_URL);
+      checkUrl.searchParams.set("action", "checkDuplicate");
+      checkUrl.searchParams.set("nama", formData.namaLengkap.trim());
+      checkUrl.searchParams.set("nik", formData.nik.trim());
+
+      const checkRes = await fetch(checkUrl.toString());
+      const checkJson = await checkRes.json();
+
+      if (checkJson.duplicate) {
+        alert(
+          `⚠️ Data sudah ada!\n\n` +
+            `${checkJson.field} yang Anda masukkan sudah terdaftar di sistem.\n` +
+            `Silakan periksa kembali data yang diisi.`
+        );
+        setStatus("idle");
+        setUploadProgress("");
+        return;
+      }
+
+      setUploadProgress("Menyiapkan data...");
+
+      const fileData: {
+        [key: string]: {
+          base64: string;
+          mimeType: string;
+          fileName: string;
+        } | null;
+      } = {};
       for (const fk of FILE_FIELDS.filter((f) => f.key !== "fotoLulus")) {
         const f = files[fk.key];
         if (f) {
@@ -929,6 +954,7 @@ function PageForm() {
         <F
           name="nik"
           label="NIK (Nomor Induk Kependudukan)"
+          required
           inputMode="numeric"
           pattern="[0-9]*"
           onInput={(e: React.FormEvent<HTMLInputElement>) => {
@@ -2092,9 +2118,13 @@ function PageData({
           .toLowerCase() === filterKelas.toLowerCase()
       : true;
     const matchRombel = filterRombel
-      ? String(s.rombel || "")
-          .trim()
-          .toUpperCase() === filterRombel.toUpperCase()
+      ? filterRombel === "MURID_BARU"
+        ? String(s.rombel || "")
+            .trim()
+            .toLowerCase() === "murid baru"
+        : String(s.rombel || "")
+            .trim()
+            .toUpperCase() === filterRombel.toUpperCase()
       : true;
     const matchTahunLulus =
       filterKelas.toLowerCase() === "lulus" && filterTahunLulus
@@ -2333,7 +2363,13 @@ function PageData({
 
       const fileName = `DataPesertaDidik${
         filterKelas ? "_Kelas" + filterKelas : ""
-      }${filterRombel ? "_Rombel" + filterRombel : ""}.xlsx`;
+      }${
+        filterRombel
+          ? filterRombel === "MURID_BARU"
+            ? "_MuridBaru"
+            : "_Rombel" + filterRombel
+          : ""
+      }.xlsx`;
 
       // ── Gunakan Blob + anchor agar mobile langsung download tanpa perlu app Excel ──
       const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
@@ -2441,6 +2477,7 @@ function PageData({
             <option value="">Semua Rombel</option>
             <option value="A">Rombel A</option>
             <option value="B">Rombel B</option>
+            {isOperator && <option value="MURID_BARU">Murid Baru</option>}
           </select>
         </div>
         <div className="flex gap-2">
